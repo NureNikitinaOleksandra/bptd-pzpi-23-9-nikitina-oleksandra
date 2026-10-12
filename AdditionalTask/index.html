@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Частотний аналіз літер</title>
+    <!-- Підключення бібліотеки Chart.js для малювання графіків -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      /* Стилі для мінімалістичного вигляду сторінки */
+      :root {
+        --primary-color: #4f46e5;
+        --primary-hover: #4338ca;
+        --bg-color: #f3f4f6;
+        --card-bg: #ffffff;
+        --text-color: #1f2937;
+        --border-color: #e5e7eb;
+      }
+
+      body {
+        font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        margin: 0;
+        padding: 2rem;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+      }
+
+      .container {
+        background: var(--card-bg);
+        padding: 2.5rem;
+        border-radius: 16px;
+        box-shadow:
+          0 10px 15px -3px rgba(0, 0, 0, 0.1),
+          0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        width: 100%;
+        max-width: 900px;
+      }
+
+      h2 {
+        margin-top: 0;
+        text-align: center;
+        color: var(--text-color);
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+      }
+
+      .upload-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        padding: 2rem;
+        border: 2px dashed var(--border-color);
+        border-radius: 12px;
+        background-color: #f9fafb;
+        transition: border-color 0.3s;
+      }
+
+      .upload-section:hover {
+        border-color: var(--primary-color);
+      }
+
+      input[type="file"] {
+        display: none;
+      }
+
+      .custom-file-upload {
+        background-color: var(--primary-color);
+        color: #fff;
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1rem;
+        font-weight: 500;
+        transition:
+          background-color 0.2s,
+          transform 0.1s;
+      }
+
+      .custom-file-upload:hover {
+        background-color: var(--primary-hover);
+      }
+
+      .custom-file-upload:active {
+        transform: scale(0.98);
+      }
+
+      #fileName {
+        font-size: 0.9rem;
+        color: #6b7280;
+        font-weight: 500;
+      }
+
+      .chart-container {
+        position: relative;
+        height: 400px;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Статистика зустрічальності літер у текстах</h2>
+
+      <div class="upload-section">
+        <label for="fileInput" class="custom-file-upload">
+          Завантажити .txt файл
+        </label>
+        <!-- Кнопка для вибору файлу -->
+        <input type="file" id="fileInput" accept=".txt" />
+        <span id="fileName">Файл не обрано</span>
+      </div>
+
+      <!-- Місце для малювання графіка -->
+      <div class="chart-container">
+        <canvas id="myChart"></canvas>
+      </div>
+    </div>
+
+    <script>
+      let chartInstance = null; // Змінна для зберігання графіка (щоб оновлювати його)
+
+      // Слухаємо подію вибору файлу
+      document
+        .getElementById("fileInput")
+        .addEventListener("change", function (event) {
+          const file = event.target.files[0];
+          if (!file) return;
+
+          // Відображаємо назву файлу в інтерфейсі
+          document.getElementById("fileName").textContent =
+            "Обрано файл: " + file.name;
+
+          // Використовуємо FileReader для зчитування тексту
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            const text = e.target.result;
+            analyzeText(text, file.name); // Передаємо зчитаний текст у функцію аналізу
+          };
+          reader.readAsText(file);
+        });
+
+      // Функція підрахунку та малювання
+      function analyzeText(text, fileName) {
+        // 1. Переводимо в нижній регістр
+        text = text.toLowerCase();
+
+        // 2. Створюємо об'єкт для підрахунку та масив з українським алфавітом
+        let counts = {};
+        const alphabet = "абвгґдеєжзиіїйклмнопрстуфхцчшщьюя";
+
+        // Ініціалізуємо лічильники нулями
+        for (let char of alphabet) {
+          counts[char] = 0;
+        }
+
+        let totalLetters = 0;
+
+        // 3. Рахуємо літери
+        for (let char of text) {
+          if (alphabet.includes(char)) {
+            counts[char]++;
+            totalLetters++;
+          }
+        }
+
+        // 4. Перетворюємо об'єкт у масив масивів [літера, кількість] і сортуємо за спаданням
+        let sortedArray = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+
+        // 5. Формуємо відсортовані дані для графіка (осі X та Y)
+        let labels = [];
+        let dataPercentages = [];
+
+        for (let item of sortedArray) {
+          let char = item[0];
+          let count = item[1];
+
+          labels.push(char.toUpperCase()); // Великі літери для підписів
+          let percentage =
+            totalLetters === 0 ? 0 : (counts[char] / totalLetters) * 100;
+          dataPercentages.push(percentage.toFixed(2)); // Округлюємо до 2 знаків
+        }
+
+        // 6. Малюємо графік
+        drawChart(labels, dataPercentages, fileName);
+      }
+
+      // Функція для побудови графіка
+      function drawChart(labels, data, fileName) {
+        const ctx = document.getElementById("myChart").getContext("2d");
+
+        // Якщо графік вже існує, видаляємо його перед малюванням нового
+        if (chartInstance) {
+          chartInstance.destroy();
+        }
+
+        chartInstance = new Chart(ctx, {
+          type: "bar", // Стовпчаста діаграма
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: `Частотність літер (%) — ${fileName}`,
+                data: data,
+                backgroundColor: "rgba(79, 70, 229, 0.7)", // Колір стовпчиків
+                borderColor: "rgba(79, 70, 229, 1)",
+                borderWidth: 1,
+                borderRadius: 4, // Заокруглені верхівки стовпчиків
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                labels: {
+                  font: { size: 14, family: "'Segoe UI', sans-serif" },
+                },
+              },
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: { display: true, text: "Відсоток (%)" },
+              },
+              x: {
+                ticks: { font: { size: 12, weight: "bold" } },
+              },
+            },
+          },
+        });
+      }
+    </script>
+  </body>
+</html>
