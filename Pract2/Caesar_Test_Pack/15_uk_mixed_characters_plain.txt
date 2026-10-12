@@ -1,0 +1,3 @@
+Ґанок, Єнот, Ірина та Їжак — № 42!
+Email: test@example.com; URL: https://example.com/a?b=2
+Emoji: 🙂; quotes: "тест"; apostrophe: don't.

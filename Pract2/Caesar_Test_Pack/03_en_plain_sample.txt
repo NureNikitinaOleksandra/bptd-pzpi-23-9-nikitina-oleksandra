@@ -1,0 +1,3 @@
+Hello, World!
+This is a Caesar cipher test: 123, commas, periods, dashes — and Mixed Case.
+Keep spaces, digits, punctuation, and line breaks unchanged.

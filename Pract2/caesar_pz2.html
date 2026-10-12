@@ -1,0 +1,1545 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Шифр Цезаря та частотний криптоаналіз</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      :root {
+        --primary-color: #4f46e5;
+        --primary-hover: #4338ca;
+        --success-color: #10b981;
+        --success-hover: #059669;
+        --error-color: #ef4444;
+        --warning-color: #d97706;
+        --bg-color: #f3f4f6;
+        --card-bg: #ffffff;
+        --text-color: #1f2937;
+        --muted-color: #6b7280;
+        --border-color: #e5e7eb;
+        --highlight-bg: #e0e7ff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background: var(--bg-color);
+        color: var(--text-color);
+        margin: 0;
+        padding: 24px;
+        min-height: 100vh;
+      }
+
+      .container {
+        width: min(1180px, 100%);
+        margin: 0 auto;
+        background: var(--card-bg);
+        padding: 32px;
+        border-radius: 16px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin-top: 0;
+      }
+      h1 {
+        text-align: center;
+        font-size: 1.8rem;
+      }
+      h2 {
+        font-size: 1.2rem;
+      }
+
+      .subtitle {
+        margin: -8px 0 24px;
+        text-align: center;
+        color: var(--muted-color);
+      }
+
+      .top-controls,
+      .panel,
+      .analytics-card,
+      .result-card {
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        background: #fff;
+      }
+
+      .top-controls {
+        display: grid;
+        grid-template-columns: minmax(180px, 240px) 1fr;
+        gap: 18px;
+        align-items: end;
+        padding: 20px;
+        background: #f9fafb;
+      }
+
+      .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+      }
+
+      .control-group label,
+      .section-label {
+        font-weight: 600;
+        font-size: 0.95rem;
+      }
+
+      select,
+      input[type="number"],
+      textarea,
+      input[type="file"] {
+        font: inherit;
+      }
+
+      select,
+      input[type="number"] {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--text-color);
+      }
+
+      .mode-switch,
+      .method-switch {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .mode-button,
+      .method-button {
+        border: 1px solid var(--border-color);
+        background: #fff;
+        color: var(--text-color);
+        padding: 10px 14px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      .mode-button.active,
+      .method-button.active {
+        border-color: var(--primary-color);
+        background: var(--highlight-bg);
+        color: var(--primary-color);
+      }
+
+      .mode-button:hover,
+      .method-button:hover {
+        border-color: var(--primary-color);
+      }
+
+      .section {
+        margin-top: 24px;
+      }
+      .hidden {
+        display: none !important;
+      }
+
+      .panel,
+      .analytics-card,
+      .result-card {
+        padding: 20px;
+      }
+
+      .input-grid {
+        display: grid;
+        grid-template-columns: 1fr 220px;
+        gap: 18px;
+      }
+
+      .input-single {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 190px;
+        padding: 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        resize: vertical;
+        background: #f9fafb;
+        color: var(--text-color);
+        line-height: 1.45;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .btn {
+        border: none;
+        border-radius: 8px;
+        padding: 11px 18px;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 600;
+        background: var(--primary-color);
+        color: #fff;
+      }
+
+      .btn:hover {
+        background: var(--primary-hover);
+      }
+      .btn-success {
+        background: var(--success-color);
+      }
+      .btn-success:hover {
+        background: var(--success-hover);
+      }
+      .btn-secondary {
+        background: #4b5563;
+      }
+      .btn-secondary:hover {
+        background: #374151;
+      }
+
+      input[type="file"] {
+        display: none;
+      }
+
+      .file-label {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+      }
+
+      .file-name {
+        color: var(--muted-color);
+        font-size: 0.92rem;
+        margin-left: 6px;
+      }
+
+      .hint {
+        color: var(--muted-color);
+        font-size: 0.9rem;
+        line-height: 1.45;
+        margin-top: 9px;
+      }
+
+      .message {
+        margin-top: 14px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        display: none;
+        line-height: 1.4;
+      }
+
+      .message.error {
+        display: block;
+        color: #991b1b;
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+      }
+
+      .message.warning {
+        display: block;
+        color: #92400e;
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+      }
+
+      .analytics-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+
+      .chart-container {
+        position: relative;
+        height: 360px;
+      }
+
+      .matrix-wrap {
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        min-width: 430px;
+        border-collapse: collapse;
+        text-align: center;
+        font-size: 1rem;
+      }
+
+      th,
+      td {
+        border: 1px solid var(--border-color);
+        padding: 10px;
+      }
+
+      th {
+        background: #f9fafb;
+        font-weight: 700;
+      }
+
+      .highlight-cell {
+        background: var(--highlight-bg);
+        color: var(--primary-color);
+        font-weight: 800;
+      }
+
+      .legend {
+        margin-top: 10px;
+        color: var(--muted-color);
+        font-size: 0.88rem;
+      }
+
+      .candidate-table {
+        overflow-x: auto;
+      }
+
+      .candidate-table table {
+        min-width: 760px;
+      }
+
+      .candidate-best {
+        background: #ecfdf5;
+      }
+
+      .status-pill {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        font-weight: 700;
+      }
+
+      .status-best {
+        background: #d1fae5;
+        color: #065f46;
+      }
+
+      .status-ok {
+        background: #e0e7ff;
+        color: #3730a3;
+      }
+
+      .status-low {
+        background: #fef3c7;
+        color: #92400e;
+      }
+
+      .logs-container {
+        max-height: 290px;
+        overflow-y: auto;
+        background: #1f2937;
+        color: #e5e7eb;
+        padding: 16px;
+        border-radius: 8px;
+        font-family: Consolas, "Courier New", monospace;
+        line-height: 1.5;
+        white-space: pre-wrap;
+      }
+
+      .log-success {
+        color: #86efac;
+      }
+      .log-error {
+        color: #fca5a5;
+      }
+      .log-highlight {
+        color: #93c5fd;
+      }
+
+      .result-preview {
+        margin-top: 12px;
+      }
+
+      .metric-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .metric {
+        padding: 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: #f9fafb;
+      }
+
+      .metric .label {
+        display: block;
+        color: var(--muted-color);
+        font-size: 0.82rem;
+        margin-bottom: 4px;
+      }
+
+      .metric strong {
+        font-size: 1.05rem;
+      }
+
+      .info-box {
+        padding: 12px 14px;
+        background: #f9fafb;
+        border-left: 4px solid var(--primary-color);
+        line-height: 1.5;
+      }
+
+      @media (max-width: 850px) {
+        .top-controls,
+        .input-grid,
+        .analytics-grid,
+        .metric-row {
+          grid-template-columns: 1fr;
+        }
+        .container {
+          padding: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Шифр Цезаря та частотний криптоаналіз</h1>
+      <p class="subtitle">
+        Шифрування, дешифрування за ключем та атака на шифротекст за
+        повторюваними зсувами
+      </p>
+
+      <section class="top-controls">
+        <div class="control-group">
+          <label for="languageSelect">Алфавіт тексту</label>
+          <select id="languageSelect">
+            <option value="uk">Українська мова</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <span class="section-label">Операція</span>
+          <div class="mode-switch" role="tablist" aria-label="Операція">
+            <button
+              class="mode-button active"
+              type="button"
+              data-mode="encrypt"
+            >
+              Шифрування
+            </button>
+            <button class="mode-button" type="button" data-mode="decrypt">
+              Дешифрування
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <div id="globalMessage" class="message"></div>
+
+      <!-- ШИФРУВАННЯ -->
+      <section id="encryptSection" class="section">
+        <div class="panel">
+          <h2>Шифрування шифром Цезаря</h2>
+          <div class="input-grid">
+            <div class="input-single">
+              <label for="encryptInput"><strong>Відкритий текст</strong></label>
+              <textarea
+                id="encryptInput"
+                placeholder="Введіть відкритий текст..."
+              ></textarea>
+            </div>
+            <div class="input-single">
+              <label for="encryptKey"><strong>Ключ (зсув)</strong></label>
+              <input id="encryptKey" type="number" min="0" value="3" />
+              <div class="hint">
+                Для поточного алфавіту допустимий діапазон: 0–<span
+                  id="encryptMaxKey"
+                  >32</span
+                >.
+              </div>
+            </div>
+          </div>
+          <div class="actions">
+            <button id="encryptButton" class="btn" type="button">
+              Зашифрувати
+            </button>
+            <button
+              id="clearEncryptButton"
+              class="btn btn-secondary"
+              type="button"
+            >
+              Очистити
+            </button>
+          </div>
+        </div>
+
+        <div id="encryptResult" class="result-card section hidden">
+          <h2>Зашифрований текст</h2>
+          <textarea id="encryptOutput" readonly></textarea>
+          <div class="actions">
+            <button
+              id="downloadEncryptedButton"
+              class="btn btn-success"
+              type="button"
+            >
+              Завантажити зашифрований текст (.txt)
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ДЕШИФРУВАННЯ -->
+      <section id="decryptSection" class="section hidden">
+        <div class="panel">
+          <h2>Дешифрування</h2>
+          <div
+            class="method-switch"
+            role="tablist"
+            aria-label="Метод дешифрування"
+          >
+            <button
+              class="method-button active"
+              type="button"
+              data-method="key"
+            >
+              За відомим ключем
+            </button>
+            <button class="method-button" type="button" data-method="attack">
+              Атака частотним аналізом
+            </button>
+          </div>
+        </div>
+
+        <!-- Дешифрування за ключем -->
+        <div id="keyDecryptSection" class="section">
+          <div class="panel">
+            <div class="input-grid">
+              <div class="input-single">
+                <label for="keyDecryptInput"><strong>Шифротекст</strong></label>
+                <textarea
+                  id="keyDecryptInput"
+                  placeholder="Введіть шифротекст..."
+                ></textarea>
+              </div>
+              <div class="input-single">
+                <label for="decryptKey"><strong>Ключ (зсув)</strong></label>
+                <input id="decryptKey" type="number" min="0" value="3" />
+                <div class="hint">
+                  Для поточного алфавіту допустимий діапазон: 0–<span
+                    id="decryptMaxKey"
+                    >32</span
+                  >.
+                </div>
+              </div>
+            </div>
+            <div class="actions">
+              <button id="decryptButton" class="btn" type="button">
+                Розшифрувати
+              </button>
+              <button
+                id="clearDecryptButton"
+                class="btn btn-secondary"
+                type="button"
+              >
+                Очистити
+              </button>
+            </div>
+          </div>
+
+          <div id="keyDecryptResult" class="result-card section hidden">
+            <h2>Розшифрований текст</h2>
+            <textarea id="keyDecryptOutput" readonly></textarea>
+            <div class="actions">
+              <button
+                id="downloadKeyDecryptButton"
+                class="btn btn-success"
+                type="button"
+              >
+                Завантажити розшифрований текст (.txt)
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Атака -->
+        <div id="attackSection" class="section hidden">
+          <div class="panel">
+            <h2>Атака на шифротекст за частотним аналізом</h2>
+            <div class="info-box">
+              Програма бере 4 найчастіші літери шифротексту та 4 еталонні літери
+              мови, будує матрицю можливих зсувів і перевіряє евристикою
+              <strong
+                >лише ті зсуви, які повторилися в матриці не менше двох
+                разів</strong
+              >.
+            </div>
+            <div class="actions">
+              <label for="attackFileInput" class="btn file-label"
+                >Завантажити зашифрований текст (.txt)</label
+              >
+              <input
+                id="attackFileInput"
+                type="file"
+                accept=".txt,text/plain"
+              />
+              <span id="attackFileName" class="file-name">Файл не обрано</span>
+            </div>
+            <div class="hint">
+              Для частотного аналізу використовується весь файл. Для евристичної
+              перевірки кожного знайденого кандидата використовується перші
+              <strong id="heuristicCharsLabel">3000</strong> символів.
+            </div>
+            <div id="attackMessage" class="message"></div>
+          </div>
+
+          <div id="attackAnalytics" class="section hidden">
+            <div class="analytics-grid">
+              <div class="analytics-card">
+                <h2>Частотність літер шифротексту</h2>
+                <div class="chart-container">
+                  <canvas id="frequencyChart"></canvas>
+                </div>
+              </div>
+              <div class="analytics-card">
+                <h2>Матриця можливих зсувів</h2>
+                <div id="matrixContainer" class="matrix-wrap"></div>
+                <div class="legend">
+                  Підсвічені клітинки містять зсуви, що повторилися не менше
+                  двох разів — саме вони формують кандидати для атаки.
+                </div>
+              </div>
+            </div>
+
+            <div class="panel section">
+              <h2>Гіпотези та їх перевірка</h2>
+              <div id="candidateSummary" class="hint"></div>
+              <div id="candidateTable" class="candidate-table section"></div>
+            </div>
+
+            <div class="panel section">
+              <h2>Хід криптоаналізу</h2>
+              <div id="logsContainer" class="logs-container"></div>
+            </div>
+
+            <div id="attackResult" class="result-card section hidden">
+              <h2>Найімовірніший результат</h2>
+              <div id="winnerSummary" class="info-box"></div>
+              <div id="metrics" class="metric-row"></div>
+              <div class="result-preview">
+                <label for="attackResultText"
+                  ><strong>Фрагмент розшифрованого тексту</strong></label
+                >
+                <textarea id="attackResultText" readonly></textarea>
+              </div>
+              <div class="actions">
+                <button
+                  id="downloadAttackButton"
+                  class="btn btn-success"
+                  type="button"
+                >
+                  Завантажити повний розшифрований текст (.txt)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      // Тут зберігаються правила для різних мов (української та англійської).
+      const CONFIG = {
+        uk: {
+          alphabet: "абвгґдеєжзиіїйклмнопрстуфхцчшщьюя",
+          referenceLetters: ["о", "а", "н", "и"],
+          commonWords: new Set([
+            "і",
+            "й",
+            "в",
+            "у",
+            "на",
+            "не",
+            "що",
+            "з",
+            "із",
+            "це",
+            "як",
+            "до",
+            "а",
+            "та",
+          ]),
+          vowels: new Set(["а", "е", "є", "и", "і", "ї", "о", "у", "ю", "я"]),
+          targetVowelRatio: 0.42,
+        },
+        en: {
+          alphabet: "abcdefghijklmnopqrstuvwxyz",
+          referenceLetters: ["e", "t", "a", "o"],
+          commonWords: new Set([
+            "the",
+            "of",
+            "to",
+            "and",
+            "a",
+            "in",
+            "is",
+            "it",
+            "you",
+            "that",
+          ]),
+          vowels: new Set(["a", "e", "i", "o", "u", "y"]),
+          targetVowelRatio: 0.39,
+        },
+      };
+
+      // Ліміт для функції перевірки.
+      const HEURISTIC_SAMPLE_SIZE = 3000;
+
+      // Ліміт для відображення у текстовому полі на екрані.
+      const PREVIEW_SIZE = 500;
+
+      // Максимальна кількість гіпотез, які виводяться у HTML-таблицю результатів.
+      const TOP_VISIBLE_CANDIDATES = 8;
+
+      // Тут зберігаються поточний режим (mode), оригінальний текст і розшифровані тексти.
+      const state = {
+        mode: "encrypt",
+        decryptMethod: "key",
+        chart: null,
+        encryptedText: "",
+        keyDecryptedText: "",
+        attackCiphertext: "",
+        attackDecryptedText: "",
+      };
+
+      // Словник DOM-елементів (HTML-тегів).
+      const el = {
+        language: document.getElementById("languageSelect"),
+        globalMessage: document.getElementById("globalMessage"),
+        encryptSection: document.getElementById("encryptSection"),
+        decryptSection: document.getElementById("decryptSection"),
+        keyDecryptSection: document.getElementById("keyDecryptSection"),
+        attackSection: document.getElementById("attackSection"),
+        encryptInput: document.getElementById("encryptInput"),
+        encryptKey: document.getElementById("encryptKey"),
+        encryptMaxKey: document.getElementById("encryptMaxKey"),
+        encryptOutput: document.getElementById("encryptOutput"),
+        encryptResult: document.getElementById("encryptResult"),
+        keyDecryptInput: document.getElementById("keyDecryptInput"),
+        decryptKey: document.getElementById("decryptKey"),
+        decryptMaxKey: document.getElementById("decryptMaxKey"),
+        keyDecryptOutput: document.getElementById("keyDecryptOutput"),
+        keyDecryptResult: document.getElementById("keyDecryptResult"),
+        attackFileInput: document.getElementById("attackFileInput"),
+        attackFileName: document.getElementById("attackFileName"),
+        attackMessage: document.getElementById("attackMessage"),
+        attackAnalytics: document.getElementById("attackAnalytics"),
+        frequencyChart: document.getElementById("frequencyChart"),
+        matrixContainer: document.getElementById("matrixContainer"),
+        candidateSummary: document.getElementById("candidateSummary"),
+        candidateTable: document.getElementById("candidateTable"),
+        logs: document.getElementById("logsContainer"),
+        attackResult: document.getElementById("attackResult"),
+        winnerSummary: document.getElementById("winnerSummary"),
+        metrics: document.getElementById("metrics"),
+        attackResultText: document.getElementById("attackResultText"),
+        heuristicCharsLabel: document.getElementById("heuristicCharsLabel"),
+      };
+
+      // Отримує конфігурацію (алфавіт, еталонні літери, словники) для поточної обраної мови.
+      function getConfig() {
+        return CONFIG[el.language.value];
+      }
+
+      // Нормалізує значення зсуву (ключа), щоб воно завжди було додатним і не виходило за межі довжини алфавіту.
+      function normalizeShift(shift, alphabetLength) {
+        return ((shift % alphabetLength) + alphabetLength) % alphabetLength;
+      }
+
+      // Зчитує значення з HTML-поля вводу та видаляє випадкові пробіли по краях.
+      // Перевіряє, чи поле не порожнє і чи містить воно коректне ціле число.
+      // Якщо число виходить за межі допустимого діапазону (від 0 до довжини алфавіту - 1)
+      // або введено літери замість цифр — повертає null (помилку). Інакше повертає готовий числовий ключ.
+      function getValidKey(input, alphabetLength) {
+        const rawValue = input.value.trim();
+        if (rawValue === "") return null;
+
+        const value = Number(rawValue);
+        if (!Number.isInteger(value) || value < 0 || value >= alphabetLength) {
+          return null;
+        }
+        return value;
+      }
+
+      // Базова універсальна функція трансформації тексту. Виконує зміщення символів по алфавіту.
+      // Позитивний зсув працює як шифрування, негативний - як дешифрування.
+      function transformCaesar(text, shift, alphabet) {
+        const lowerAlphabet = alphabet.toLowerCase();
+        const upperAlphabet = alphabet.toUpperCase();
+        const normalizedShift = normalizeShift(shift, alphabet.length);
+        let result = "";
+
+        for (const char of text) {
+          const lowerIndex = lowerAlphabet.indexOf(char);
+          if (lowerIndex !== -1) {
+            result +=
+              lowerAlphabet[(lowerIndex + normalizedShift) % alphabet.length];
+            continue;
+          }
+
+          const upperIndex = upperAlphabet.indexOf(char);
+          if (upperIndex !== -1) {
+            result +=
+              upperAlphabet[(upperIndex + normalizedShift) % alphabet.length];
+            continue;
+          }
+
+          result += char;
+        }
+
+        return result;
+      }
+
+      // Функція-обгортка для шифрування. Викликає базову трансформацію з позитивним значенням ключа.
+      function encryptCaesar(text, shift, alphabet) {
+        return transformCaesar(text, shift, alphabet);
+      }
+
+      // Функція-обгортка для дешифрування. Викликає базову трансформацію з негативним значенням ключа (віднімає зсув).
+      function decryptCaesar(text, shift, alphabet) {
+        return transformCaesar(text, -shift, alphabet);
+      }
+
+      // Відображає повідомлення (помилки, попередження або інфо) у вказаному HTML-блоці.
+      function setMessage(element, message, type = "warning") {
+        element.textContent = message;
+        element.className = `message ${type}`;
+      }
+
+      // Очищає та приховує блок повідомлень на екрані.
+      function clearMessage(element) {
+        element.textContent = "";
+        element.className = "message";
+      }
+
+      // Динамічно оновлює максимальне допустиме значення ключа в інпутах залежно від обраної мови
+      // (наприклад, 32 для української, 25 для англійської).
+      function updateKeyLimits() {
+        const maxKey = getConfig().alphabet.length - 1;
+        el.encryptKey.max = String(maxKey);
+        el.decryptKey.max = String(maxKey);
+        el.encryptMaxKey.textContent = String(maxKey);
+        el.decryptMaxKey.textContent = String(maxKey);
+
+        if (Number(el.encryptKey.value) > maxKey) el.encryptKey.value = maxKey;
+        if (Number(el.decryptKey.value) > maxKey) el.decryptKey.value = maxKey;
+      }
+
+      // Перемикає режим роботи застосунку між "Шифруванням" та "Дешифруванням",
+      // показуючи відповідні секції інтерфейсу.
+      function switchMode(mode) {
+        state.mode = mode;
+
+        document.querySelectorAll(".mode-button").forEach((button) => {
+          button.classList.toggle("active", button.dataset.mode === mode);
+        });
+
+        el.encryptSection.classList.toggle("hidden", mode !== "encrypt");
+        el.decryptSection.classList.toggle("hidden", mode !== "decrypt");
+        clearMessage(el.globalMessage);
+      }
+
+      // Перемикає підрежим у розділі дешифрування: "За відомим ключем" або "Атака частотним аналізом".
+      function switchDecryptMethod(method) {
+        state.decryptMethod = method;
+
+        document.querySelectorAll(".method-button").forEach((button) => {
+          button.classList.toggle("active", button.dataset.method === method);
+        });
+
+        el.keyDecryptSection.classList.toggle("hidden", method !== "key");
+        el.attackSection.classList.toggle("hidden", method !== "attack");
+      }
+
+      // Виконує статистичний підрахунок: рахує кількість входжень кожної літери алфавіту в текст,
+      // відкидає сторонні символи та сортує результат за спаданням частоти.
+      function frequencyAnalysis(text, alphabet) {
+        const alphabetSet = new Set(alphabet.toLowerCase());
+        const counts = Object.fromEntries(
+          [...alphabet].map((char) => [char, 0]),
+        );
+        let totalLetters = 0;
+
+        for (const char of text.toLowerCase()) {
+          if (alphabetSet.has(char)) {
+            counts[char]++;
+            totalLetters++;
+          }
+        }
+
+        const sorted = Object.entries(counts).sort(
+          (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
+        );
+        return { counts, sorted, totalLetters };
+      }
+
+      // Будує матрицю відстаней між найпопулярнішими літерами шифротексту
+      // та еталонними літерами мови (рахує потенційні ключі).
+      function calculateShiftMatrix(cipherLetters, referenceLetters, alphabet) {
+        const n = alphabet.length;
+        const shiftsMap = new Map();
+        const rows = [];
+
+        for (const reference of referenceLetters) {
+          const row = { reference, cells: [] };
+
+          for (const cipher of cipherLetters) {
+            const shift = normalizeShift(
+              alphabet.indexOf(cipher) - alphabet.indexOf(reference),
+              n,
+            );
+
+            row.cells.push({ shift });
+            shiftsMap.set(shift, (shiftsMap.get(shift) || 0) + 1);
+          }
+
+          rows.push(row);
+        }
+
+        return { rows, shiftsMap };
+      }
+
+      // Фільтрує результати матриці, залишаючи лише ті гіпотези (зсуви), які повторилися два і більше разів.
+      function getRepeatedCandidates(shiftsMap) {
+        return [...shiftsMap.entries()]
+          .filter(([, count]) => count >= 2)
+          .map(([shift, count]) => ({ shift, count }))
+          .sort((a, b) => b.count - a.count || a.shift - b.shift);
+      }
+
+      // Генерує та відмальовує HTML-таблицю (матрицю) на екрані,
+      // підсвічуючи кольором клітинки зі зсувами-кандидатами (ті, що повторилися).
+      function renderMatrix(cipherLetters, referenceLetters, rows, shiftsMap) {
+        const table = document.createElement("table");
+        const thead = document.createElement("thead");
+        const headRow = document.createElement("tr");
+
+        const corner = document.createElement("th");
+        corner.textContent = "Еталон \\ Шифр";
+        headRow.appendChild(corner);
+
+        cipherLetters.forEach((cipher) => {
+          const th = document.createElement("th");
+          th.textContent = cipher.toUpperCase();
+          headRow.appendChild(th);
+        });
+
+        thead.appendChild(headRow);
+        table.appendChild(thead);
+
+        const tbody = document.createElement("tbody");
+        rows.forEach((row) => {
+          const tr = document.createElement("tr");
+          const rowHeader = document.createElement("th");
+          rowHeader.textContent = row.reference.toUpperCase();
+          tr.appendChild(rowHeader);
+
+          row.cells.forEach((cell) => {
+            const td = document.createElement("td");
+            td.textContent = String(cell.shift);
+            if (shiftsMap.get(cell.shift) >= 2) {
+              td.classList.add("highlight-cell");
+              td.title = `Цей зсув повторюється ${shiftsMap.get(cell.shift)} раз(и)`;
+            }
+            tr.appendChild(td);
+          });
+
+          tbody.appendChild(tr);
+        });
+
+        table.appendChild(tbody);
+        el.matrixContainer.replaceChildren(table);
+      }
+
+      // Безпечно розбиває текст на окремі слова, використовуючи лише літери поточного алфавіту.
+      function tokenizeWords(text, alphabet) {
+        const escapedAlphabet = alphabet.replace(
+          /[-\\^$*+?.()|[\]{}]/g,
+          "\\$&",
+        );
+        const wordRegex = new RegExp(`[${escapedAlphabet}]+`, "gi");
+        return text.toLowerCase().match(wordRegex) || [];
+      }
+
+      // Головна евристична функція. Оцінює розшифрований текст за 100-бальною шкалою:
+      // нараховує бали за наявність типових коротких слів та за природне співвідношення голосних літер.
+      function evaluateText(text, config) {
+        const lowerText = text.toLowerCase();
+        const alphabetSet = new Set(config.alphabet);
+        const words = tokenizeWords(lowerText, config.alphabet);
+        const foundCommonWords = words.filter((word) =>
+          config.commonWords.has(word),
+        ).length;
+
+        const letters = [...lowerText].filter((char) => alphabetSet.has(char));
+        const lettersCount = letters.length;
+        const vowelsCount = letters.filter((char) =>
+          config.vowels.has(char),
+        ).length;
+        const vowelRatio = lettersCount > 0 ? vowelsCount / lettersCount : 0;
+
+        // Максимум за ключові слова — 60, за співвідношення голосних — 40.
+        const commonWordScore = Math.min(60, foundCommonWords * 6);
+        const vowelDistance = Math.abs(vowelRatio - config.targetVowelRatio);
+        const vowelScore = Math.max(0, 40 - vowelDistance * 120);
+
+        return {
+          score: commonWordScore + vowelScore,
+          foundCommonWords,
+          vowelRatio,
+          lettersCount,
+        };
+      }
+
+      // Визначає рівень впевненості алгоритму ("Висока", "Середня", "Низька")
+      // на основі балів найкращого кандидата та його відриву від конкурента на другому місці.
+      function classifyConfidence(best, second) {
+        if (!best) return { label: "Немає даних", className: "status-low" };
+
+        const gap = second ? best.score - second.score : best.score;
+
+        if (best.score >= 55 && gap >= 10) {
+          return { label: "Висока впевненість", className: "status-best" };
+        }
+        if (best.score >= 35 && gap >= 5) {
+          return { label: "Середня впевненість", className: "status-ok" };
+        }
+        return { label: "Низька впевненість", className: "status-low" };
+      }
+
+      // Головна функція-оркестратор частотної атаки. Керує всім процесом: від запуску підрахунку частот
+      // та побудови матриці до формування гіпотез і передачі їх на перевірку.
+      function analyzeAttack(text) {
+        const config = getConfig();
+        const { sorted, totalLetters } = frequencyAnalysis(
+          text,
+          config.alphabet,
+        );
+
+        if (totalLetters === 0) {
+          clearAttackResults();
+          setMessage(
+            el.attackMessage,
+            "У файлі не знайдено символів обраного алфавіту.",
+            "error",
+          );
+          return;
+        }
+
+        el.attackAnalytics.classList.remove("hidden");
+
+        renderFrequencyChart(sorted, totalLetters, config.alphabet.length);
+
+        const topCipherLetters = sorted
+          .filter(([, count]) => count > 0)
+          .slice(0, 4)
+          .map(([char]) => char);
+
+        const { rows, shiftsMap } = calculateShiftMatrix(
+          topCipherLetters,
+          config.referenceLetters,
+          config.alphabet,
+        );
+
+        renderMatrix(
+          topCipherLetters,
+          config.referenceLetters,
+          rows,
+          shiftsMap,
+        );
+
+        const candidates = getRepeatedCandidates(shiftsMap);
+        renderCandidateSummary(
+          candidates,
+          topCipherLetters.length,
+          totalLetters,
+        );
+
+        evaluateCandidates(text, candidates);
+      }
+
+      // Відмальовує стовпчасту діаграму частотності літер шифротексту за допомогою бібліотеки Chart.js.
+      function renderFrequencyChart(sorted, totalLetters, alphabetLength) {
+        if (state.chart) {
+          state.chart.destroy();
+          state.chart = null;
+        }
+
+        const labels = sorted.map(([char]) => char.toUpperCase());
+        const percentages = sorted.map(([, count]) =>
+          Number(((count / totalLetters) * 100).toFixed(2)),
+        );
+
+        state.chart = new Chart(el.frequencyChart.getContext("2d"), {
+          type: "bar",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: "Частотність (%)",
+                data: percentages,
+                backgroundColor: "rgba(79, 70, 229, 0.7)",
+                borderColor: "rgba(79, 70, 229, 1)",
+                borderWidth: 1,
+                borderRadius: 4,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: { display: true, text: "%" },
+              },
+            },
+          },
+        });
+      }
+
+      // Виводить текстовий підсумок перед блоком евристики про те,
+      // скільки повторюваних гіпотез було знайдено в матриці.
+      function renderCandidateSummary(
+        candidates,
+        topCipherCount,
+        totalLetters,
+      ) {
+        if (candidates.length === 0) {
+          el.candidateSummary.textContent =
+            `У матриці ${topCipherCount * getConfig().referenceLetters.length} значень, але жоден зсув не повторився. ` +
+            `За заданим методом атаки немає кандидатів для перевірки. ` +
+            `Доступних букв шифротексту: ${topCipherCount}; літер для статистичного аналізу: ${totalLetters}.`;
+          return;
+        }
+
+        const strongest = candidates[0];
+        el.candidateSummary.textContent =
+          `Знайдено ${candidates.length} повторюваних зсувів. ` +
+          `Найсильніша початкова гіпотеза — ключ ${strongest.shift}, ` +
+          `який повторився ${strongest.count} раз(и)(ів). ` +
+          `Для евристики буде перевірено всі повторювані кандидати, без перебору інших ключів.`;
+      }
+
+      // Проходить по всіх повторюваних ключах-кандидатах, розшифровує короткий фрагмент тексту для кожного,
+      // пропускає його через евристику, сортує за балами та визначає переможця.
+      function evaluateCandidates(text, candidates) {
+        el.logs.replaceChildren();
+        el.candidateTable.replaceChildren();
+        el.attackResult.classList.add("hidden");
+
+        if (candidates.length === 0) {
+          addLog(
+            "[STOP] Повторюваних зсувів у матриці не знайдено.",
+            "log-error",
+          );
+          addLog(
+            "За умовою атаки програма не переходить до повного перебору алфавіту.",
+            "log-highlight",
+          );
+          return;
+        }
+
+        const config = getConfig();
+        const sample = text.slice(0, HEURISTIC_SAMPLE_SIZE);
+        const evaluated = [];
+
+        addLog(
+          "> Побудовано початкові гіпотези частотним аналізом.",
+          "log-highlight",
+        );
+        candidates.forEach((candidate, index) => {
+          addLog(
+            `  ${index + 1}. Ключ ${candidate.shift} — ${candidate.count} повторення(нь) у матриці.`,
+          );
+        });
+        addLog(
+          `> Евристична перевірка: перші ${sample.length} символів.`,
+          "log-highlight",
+        );
+        addLog(
+          `> Перевіряються лише ${candidates.length} повторювані ключі.`,
+          "log-highlight",
+        );
+
+        candidates.forEach((candidate) => {
+          const decrypted = decryptCaesar(
+            sample,
+            candidate.shift,
+            config.alphabet,
+          );
+          const evaluation = evaluateText(decrypted, config);
+          evaluated.push({
+            ...candidate,
+            ...evaluation,
+            preview: decrypted.slice(0, 70).replace(/\s+/g, " "),
+          });
+        });
+
+        evaluated.sort(
+          (a, b) => b.score - a.score || b.count - a.count || a.shift - b.shift,
+        );
+
+        const best = evaluated[0];
+        const second = evaluated[1];
+        const confidence = classifyConfidence(best, second);
+
+        renderCandidateTable(evaluated, confidence, second);
+
+        evaluated.forEach((candidate) => {
+          addLog(
+            `\n[Ключ ${candidate.shift}] Матриця: ${candidate.count} | Бал: ${candidate.score.toFixed(1)}`,
+          );
+          addLog(`Текст: "${candidate.preview}..."`);
+        });
+
+        addLog(
+          `\n> Найкращий кандидат після евристики: ключ ${best.shift}.`,
+          "log-success",
+        );
+        addLog(`> Рівень впевненості: ${confidence.label}.`);
+
+        const fullDecrypted = decryptCaesar(text, best.shift, config.alphabet);
+        state.attackDecryptedText = fullDecrypted;
+
+        renderAttackResult(best, second, confidence, fullDecrypted);
+      }
+
+      // Генерує та відмальовує детальну таблицю результатів евристичної перевірки
+      // (бали, частка голосних, кількість знайдених слів) для кожного перевіреного ключа.
+      function renderCandidateTable(evaluated, confidence, second) {
+        const table = document.createElement("table");
+        const thead = document.createElement("thead");
+        const headerRow = document.createElement("tr");
+
+        [
+          "№",
+          "Ключ",
+          "Повторення",
+          "Бал",
+          "Типові слова",
+          "Голосні",
+          "Статус",
+          "Фрагмент",
+        ].forEach((title) => {
+          const th = document.createElement("th");
+          th.textContent = title;
+          headerRow.appendChild(th);
+        });
+
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        const tbody = document.createElement("tbody");
+        const best = evaluated[0];
+
+        evaluated
+          .slice(0, TOP_VISIBLE_CANDIDATES)
+          .forEach((candidate, index) => {
+            const row = document.createElement("tr");
+            if (candidate === best) row.classList.add("candidate-best");
+
+            const values = [
+              String(index + 1),
+              String(candidate.shift),
+              String(candidate.count),
+              candidate.score.toFixed(1),
+              String(candidate.foundCommonWords),
+              `${(candidate.vowelRatio * 100).toFixed(1)}%`,
+            ];
+
+            values.forEach((value) => {
+              const td = document.createElement("td");
+              td.textContent = value;
+              row.appendChild(td);
+            });
+
+            const statusTd = document.createElement("td");
+            const pill = document.createElement("span");
+            pill.className = `status-pill ${candidate === best ? confidence.className : "status-low"}`;
+            pill.textContent =
+              candidate === best
+                ? `Найкращий · ${confidence.label}`
+                : "Кандидат";
+            statusTd.appendChild(pill);
+            row.appendChild(statusTd);
+
+            const previewTd = document.createElement("td");
+            previewTd.textContent = `${candidate.preview}...`;
+            row.appendChild(previewTd);
+
+            tbody.appendChild(row);
+          });
+
+        table.appendChild(tbody);
+        el.candidateTable.appendChild(table);
+
+        if (evaluated.length > TOP_VISIBLE_CANDIDATES) {
+          const note = document.createElement("div");
+          note.className = "hint";
+          note.textContent = `На екрані показано перші ${TOP_VISIBLE_CANDIDATES} кандидатів за балом; алгоритм перевірив усі ${evaluated.length} повторювані ключі.`;
+          el.candidateTable.appendChild(note);
+        }
+      }
+
+      // Виводить на екран фінальний розшифрований текст та статистичні метрики найкращого ключа після успішної атаки.
+      function renderAttackResult(best, second, confidence, fullDecryptedText) {
+        const gap = second ? best.score - second.score : best.score;
+        const summary = [
+          `Найімовірніший ключ: ${best.shift}.`,
+          `У матриці цей зсув повторився ${best.count} раз(и).`,
+          `Евристична оцінка: ${best.score.toFixed(1)} бала.`,
+          `Відрив від наступного кандидата: ${gap.toFixed(1)} бала.`,
+          `Рівень впевненості: ${confidence.label}.`,
+          `Це евристичний висновок, а не математична гарантія правильності ключа.`,
+        ].join(" ");
+
+        el.winnerSummary.textContent = summary;
+        el.attackResultText.value =
+          fullDecryptedText.slice(0, PREVIEW_SIZE) +
+          (fullDecryptedText.length > PREVIEW_SIZE
+            ? "\n\n[...решту тексту приховано; завантажте повний файл...]"
+            : "");
+
+        el.metrics.innerHTML = "";
+        [
+          ["Найкращий ключ", best.shift],
+          ["Повторень у матриці", best.count],
+          ["Оцінка", best.score.toFixed(1)],
+          ["Впевненість", confidence.label],
+        ].forEach(([label, value]) => {
+          const metric = document.createElement("div");
+          metric.className = "metric";
+          const labelElement = document.createElement("span");
+          labelElement.className = "label";
+          labelElement.textContent = label;
+          const valueElement = document.createElement("strong");
+          valueElement.textContent = String(value);
+          metric.append(labelElement, valueElement);
+          el.metrics.appendChild(metric);
+        });
+
+        el.attackResult.classList.remove("hidden");
+      }
+
+      // Додає новий рядок тексту у блок логування "Хід криптоаналізу",
+      // дозволяючи користувачу крок за кроком слідкувати за роботою алгоритму.
+      function addLog(text, className = "") {
+        const line = document.createElement("div");
+        line.className = className;
+        line.textContent = text;
+        el.logs.appendChild(line);
+        el.logs.scrollTop = el.logs.scrollHeight;
+      }
+
+      // Очищає всі графіки, матриці, таблиці та логи попередньої атаки
+      // при завантаженні нового (або невалідного) файлу.
+      function clearAttackResults() {
+        if (state.chart) {
+          state.chart.destroy();
+          state.chart = null;
+        }
+        el.attackAnalytics.classList.add("hidden");
+        el.matrixContainer.replaceChildren();
+        el.candidateTable.replaceChildren();
+        el.logs.replaceChildren();
+        el.attackResult.classList.add("hidden");
+        state.attackDecryptedText = "";
+      }
+
+      // Створює Blob-об'єкт із текстом у пам'яті браузера та імітує його скачування
+      // у вигляді .txt файлу, не використовуючи сервер.
+      function downloadText(text, filename) {
+        if (!text) return;
+
+        const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+      }
+
+      // Асинхронно зчитує вміст завантаженого користувачем текстового файлу за допомогою FileReader API.
+      function readTextFile(file, onSuccess) {
+        const reader = new FileReader();
+        reader.onload = (event) => onSuccess(String(event.target.result || ""));
+        reader.onerror = () =>
+          setMessage(el.attackMessage, "Не вдалося прочитати файл.", "error");
+        reader.readAsText(file);
+      }
+
+      document.querySelectorAll(".mode-button").forEach((button) => {
+        button.addEventListener("click", () => switchMode(button.dataset.mode));
+      });
+
+      document.querySelectorAll(".method-button").forEach((button) => {
+        button.addEventListener("click", () =>
+          switchDecryptMethod(button.dataset.method),
+        );
+      });
+
+      el.language.addEventListener("change", () => {
+        updateKeyLimits();
+
+        if (
+          state.mode === "decrypt" &&
+          state.decryptMethod === "attack" &&
+          state.attackCiphertext
+        ) {
+          analyzeAttack(state.attackCiphertext);
+        }
+      });
+
+      document.getElementById("encryptButton").addEventListener("click", () => {
+        clearMessage(el.globalMessage);
+        const config = getConfig();
+        const key = getValidKey(el.encryptKey, config.alphabet.length);
+        const text = el.encryptInput.value;
+
+        if (key === null) {
+          setMessage(
+            el.globalMessage,
+            `Ключ повинен бути цілим числом від 0 до ${config.alphabet.length - 1}.`,
+            "error",
+          );
+          return;
+        }
+        if (!text) {
+          setMessage(
+            el.globalMessage,
+            "Введіть відкритий текст для шифрування.",
+            "error",
+          );
+          return;
+        }
+
+        state.encryptedText = encryptCaesar(text, key, config.alphabet);
+        el.encryptOutput.value = state.encryptedText;
+        el.encryptResult.classList.remove("hidden");
+      });
+
+      document
+        .getElementById("clearEncryptButton")
+        .addEventListener("click", () => {
+          el.encryptInput.value = "";
+          el.encryptOutput.value = "";
+          el.encryptResult.classList.add("hidden");
+          state.encryptedText = "";
+          clearMessage(el.globalMessage);
+        });
+
+      document.getElementById("decryptButton").addEventListener("click", () => {
+        clearMessage(el.globalMessage);
+        const config = getConfig();
+        const key = getValidKey(el.decryptKey, config.alphabet.length);
+        const text = el.keyDecryptInput.value;
+
+        if (key === null) {
+          setMessage(
+            el.globalMessage,
+            `Ключ повинен бути цілим числом від 0 до ${config.alphabet.length - 1}.`,
+            "error",
+          );
+          return;
+        }
+        if (!text) {
+          setMessage(
+            el.globalMessage,
+            "Введіть шифротекст для дешифрування.",
+            "error",
+          );
+          return;
+        }
+
+        state.keyDecryptedText = decryptCaesar(text, key, config.alphabet);
+        el.keyDecryptOutput.value = state.keyDecryptedText;
+        el.keyDecryptResult.classList.remove("hidden");
+      });
+
+      document
+        .getElementById("clearDecryptButton")
+        .addEventListener("click", () => {
+          el.keyDecryptInput.value = "";
+          el.keyDecryptOutput.value = "";
+          el.keyDecryptResult.classList.add("hidden");
+          state.keyDecryptedText = "";
+          clearMessage(el.globalMessage);
+        });
+
+      el.attackFileInput.addEventListener("change", (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        el.attackFileName.textContent = `Обрано: ${file.name}`;
+        readTextFile(file, (text) => {
+          state.attackCiphertext = text;
+          el.heuristicCharsLabel.textContent = String(HEURISTIC_SAMPLE_SIZE);
+
+          if (text.length === 0) {
+            clearAttackResults();
+            setMessage(el.attackMessage, "Файл порожній.", "error");
+            return;
+          }
+
+          const config = getConfig();
+          const { totalLetters } = frequencyAnalysis(text, config.alphabet);
+
+          analyzeAttack(text);
+
+          if (totalLetters > 0 && totalLetters < 100) {
+            setMessage(
+              el.attackMessage,
+              "Попередження: текст містить менше 100 літер обраного алфавіту, тому частотний аналіз може бути нестабільним.",
+              "warning",
+            );
+          } else if (totalLetters > 0) {
+            clearMessage(el.attackMessage);
+          }
+        });
+      });
+
+      document
+        .getElementById("downloadEncryptedButton")
+        .addEventListener("click", () => {
+          downloadText(state.encryptedText, "Encrypted_Text.txt");
+        });
+
+      document
+        .getElementById("downloadKeyDecryptButton")
+        .addEventListener("click", () => {
+          downloadText(state.keyDecryptedText, "Decrypted_Text.txt");
+        });
+
+      document
+        .getElementById("downloadAttackButton")
+        .addEventListener("click", () => {
+          downloadText(state.attackDecryptedText, "Decrypted_Text.txt");
+        });
+
+      updateKeyLimits();
+      switchMode("encrypt");
+      switchDecryptMethod("key");
+    </script>
+  </body>
+</html>
